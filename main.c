@@ -15,16 +15,20 @@
 #define IDENTIFICADOR_NOMBRE "nombre"
 #define IDENTIFICADOR_AMIGOS "amigos"
 #define IDENTIFICADOR_MENSAJE "mensaje"
+#define DELIMITADOR_USUARIO_IZQUIERDA '['
+#define DELIMITADOR_USUARIO_DERECHA ']'
 
 status_t cargar_datos(usuario_s *, int, char **);
 status_t abrir_archivos(int, char **, FILE **);
 status_t abrir_archivo(FILE *, char* );
 status_t cerrar_archivos(int , FILE **);
-status_t cargar_usuarios(FILE *, usuario_s *);
+status_t cargar_perfiles(FILE *, usuario_s *);
 status_t cargar_archivos(FILE **,usuario_s *, int );
-status_t cargar_usuario(FILE *, T_usuario *);
+status_t cargar_perfil(FILE *, T_usuario *);
 status_t Getline(char *, FILE *);
-status_t cargar_amigos(vector_s,char*);
+status_t cargar_amigos(vector_s *,char*);
+status_t cargar_usuario(char*,char*);
+status_t cargar_mensajes(lista_s *, char*);
 
 int main(int argc, char *argv[])
 {
@@ -145,7 +149,7 @@ status_t cargar_archivos(FILE **ppf,usuario_s *conductor, int cantidad_archivos)
 	
 	for(i=0;i<cantidad_archivos;i++)/*Iteracion de los archivos, cargando la misma lista*/
 	{
-		if((cargar_usuarios(ppf[i], conductor))!=ST_EXIT_OK)
+		if((cargar_perfiles(ppf[i], conductor))!=ST_EXIT_OK)
 		{
 			return st;
 		}
@@ -153,11 +157,11 @@ status_t cargar_archivos(FILE **ppf,usuario_s *conductor, int cantidad_archivos)
 	return ST_EXIT_OK;
 }
 
-status_t cargar_usuarios(FILE *pf, usuario_s *conductor)
+status_t cargar_perfiles(FILE *pf, usuario_s *conductor)
 {
 	status_t st;
 
-	while(!feof(pf))/*Iteracion de la funcion cargar_usuario() con memoria para un nodo usuario y usuario_t*/
+	while(!feof(pf))/*Iteracion de la funcion cargar_perfil() con memoria para un nodo usuario y usuario_t*/
 	{
 		if((conductor->sig=(usuario_s*)malloc(sizeof(usuario_s)))==NULL)
 		{
@@ -169,7 +173,7 @@ status_t cargar_usuarios(FILE *pf, usuario_s *conductor)
 		{
 			return ST_ERROR_NOMEM;
 		}
-		if((st=cargar_usuario(pf, conductor->dato))!=ST_EXIT_OK)
+		if((st=cargar_perfil(pf, conductor->dato))!=ST_EXIT_OK)
 		{
 			return st;
 		}
@@ -178,7 +182,7 @@ status_t cargar_usuarios(FILE *pf, usuario_s *conductor)
 	return ST_EXIT_OK;
 }
 
-status_t cargar_usuario(FILE *pf, T_usuario *pusuario)
+status_t cargar_perfil(FILE *pf, T_usuario *pusuario)
 {
 	char fila[MAX_SIZE_FILA], *aux;
 	status_t st;
@@ -189,7 +193,21 @@ status_t cargar_usuario(FILE *pf, T_usuario *pusuario)
 	}
 	if((aux=strtok(fila,DELIMITADOR))==NULL)
 	{
-		return ST_ERROR_EXTRAER_DATOS;/*caso usuario*/
+        if(aux[0]=='\n')/*El caso de una linea vacia separa entre el texto para usuarios*/
+        {
+            return ST_EXIT_OK;
+        }
+        else if((aux[0]==DELIMITADOR_USUARIO_IZQUIERDA)&&(aux[strlen(aux)]==DELIMITADOR_USUARIO_DERECHA))/*Si el primer y ultimo caracter son los delimitadores*/
+        {
+            if((st=cargar_usuario(pusuario->usuario,aux))!=ST_EXIT_OK)/*Cargar usuario*/
+            {
+                return st;
+            }
+        }
+        else/*Si no es ninguno de los dos casos, la fila esta corrupta o mal escrita.*/
+        {
+            return ST_ERROR_EXTRAER_DATOS;
+        }
 	}
 	if(strncmp(fila,IDENTIFICADOR_ID,strlen(fila))==1)/*Cargar ID*/
 	{
@@ -201,44 +219,51 @@ status_t cargar_usuario(FILE *pf, T_usuario *pusuario)
 	}
 	if(strncmp(fila,IDENTIFICADOR_AMIGOS,strlen(fila))==1)/*Cargar amigos*/
 	{
-		if((st=cargar_amigos(pusuario->amigos,aux))!=ST_EXIT_OK)
+		if((st=cargar_amigos(&pusuario->amigos,aux))!=ST_EXIT_OK)
 		{
 			return st;
 		}
 	}
-	if(strncmp(fila,IDENTIFICADOR_MENSAJE,strlen(fila))==1)/*Cargar mensaje*/
+	if(strncmp(fila,IDENTIFICADOR_MENSAJE,strlen(fila))==1)/*Cargar mensajes*/
 	{
-		/*pusuario->mensaje=aux;*/
+		if((st=cargar_mensajes(&pusuario->mensajes,fila))!=ST_EXIT_OK)
+        {
+            return st;
+        }
 	}
 	return ST_EXIT_OK;
 }
 
-status_t cargar_amigos(vector_s vector,char* linea)
+status_t cargar_amigos(vector_s *vector,char* linea)
 {
 	size_t used_size, alloc_size;
 	char *auxiliar;
 	int *aux;
 	
-	
-	if((vector.dato=(int*)malloc(sizeof(int)*INIT_SIZE))==NULL)
+	if((vector->dato=(int*)malloc(sizeof(int)*INIT_SIZE))==NULL)/*Se otorga espacio al vector de enteros*/
 	{
 		return ST_ERROR_NOMEM;
 	}
 	alloc_size=INIT_SIZE;
 	used_size=0;
-	for(used_size=0; auxiliar==NULL;used_size++)
+	for(used_size=0;auxiliar==NULL;used_size++)/*Hasta que stortok() apunte a auxiliar a NULL*/
 	{
-		if(used_size==alloc_size)
+		if(used_size==alloc_size)/*Si se queda sin espacio, se otorga mas, exponencialmente*/
 		{
 			alloc_size*=CHOP_SIZE;
-			if((aux=(int*)realloc(vector.dato,sizeof(int)*alloc_size))==NULL)
+			if((aux=(int*)realloc(vector->dato,sizeof(int)*alloc_size))==NULL)
 			{
 				return ST_ERROR_NOMEM;
 			}
 		}
-		auxiliar=strtok(linea,DELIMITADOR_AMIGOS);
-		vector.dato[used_size]=atoi(auxiliar);
+		auxiliar=strtok(linea,DELIMITADOR_AMIGOS);/*A Auxiliar se lo apunta al siguiente delimitador despues de linea. Se podria poner un break en vez de la condicion de corte*/
+		vector->dato[used_size]=atoi(auxiliar);
 		linea=NULL;
+        if(used_size>50)/*-----------------------------------------BORRAR-------------------------------------*/
+        {
+            printf("Fallamos en condicion de corte - pasar los amigos\n");
+            return ST_ERROR_ESCRIBIR_ARCHIVO;
+        }
 	}
 	return ST_EXIT_OK;
 }
@@ -257,5 +282,38 @@ status_t Getline(char *s, FILE *pf)
 	}
     s[i]='\0';
 	
+    return ST_EXIT_OK;
+}
+
+status_t cargar_usuario(char *usuario,char *linea)
+{
+    int len = strlen(linea); 
+    
+    if(len > 0)
+    {
+        linea++;/*Adelantar el puntero un caracter*/
+    }
+    else
+    {
+        return ST_ERROR_EXTRAER_DATOS;
+    }
+    if(len > 1)
+    {
+        linea[len - 2] = '\0';/*Reemplazar el ultimo caracter con un fin de linea*/ 
+    }
+    else
+    {
+        return ST_ERROR_EXTRAER_DATOS;
+    }
+    if((usuario=(char*)malloc(sizeof(char)*(len+1)))==NULL)/*Memoria para el largo de la cadena +1*/
+    {
+        return ST_ERROR_NOMEM;
+    }
+    strcpy(usuario,linea);
+    return ST_EXIT_OK;
+}
+
+status_t cargar_mensajes(lista_s *lista, char *fila)
+{
     return ST_EXIT_OK;
 }
