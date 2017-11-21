@@ -39,21 +39,18 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	cantidad_archivos=(argc-CANTIDAD_MINIMA_ARGUMENTOS);
-	
-	if((red=(usuario_s*)malloc(sizeof(usuario_s)))==NULL)
+	if((red=(usuario_s*)malloc(sizeof(usuario_s)))==NULL)/*red apunta aun espacio de memoria tamaño nodo usuario*/
 	{
 		return ST_ERROR_NOMEM;
 	}
 	red->sig=NULL;
 	red->dato=NULL;
-	conductor=red;
-	
-	if((st=cargar_datos(conductor, cantidad_archivos, argv))!=ST_EXIT_OK)
+	conductor=red;/*posicionamos el conductor al principio*/
+	if((st=cargar_datos(conductor, cantidad_archivos, argv))!=ST_EXIT_OK)/*creamos una lista cargada de datos desde los FILE*/
 	{
 		imprimir_error(st);
 		return EXIT_FAILURE;
 	}
-	
 	return EXIT_SUCCESS;
 }
 
@@ -66,7 +63,7 @@ status_t cargar_datos(usuario_s *conductor, int cantidad_archivos, char *argv[])
 	{
 		return st;
 	}
-	if((st=cargar_archivos(ppf, conductor, cantidad_archivos))!=ST_EXIT_OK)
+	if((st=cargar_archivos(ppf, conductor, cantidad_archivos))!=ST_EXIT_OK)/*Creamos una lista y pasamos la informacion desde los arhivos*/
 	{
 		return st;
 	}
@@ -146,12 +143,37 @@ status_t cargar_archivos(FILE **ppf,usuario_s *conductor, int cantidad_archivos)
 	int i;
 	status_t st=ST_EXIT_OK;
 	
-	for(i=0; i<cantidad_archivos; i++)
+	for(i=0;i<cantidad_archivos;i++)/*Iteracion de los archivos, cargando la misma lista*/
 	{
 		if((cargar_usuarios(ppf[i], conductor))!=ST_EXIT_OK)
 		{
 			return st;
 		}
+	}
+	return ST_EXIT_OK;
+}
+
+status_t cargar_usuarios(FILE *pf, usuario_s *conductor)
+{
+	status_t st;
+
+	while(!feof(pf))/*Iteracion de la funcion cargar_usuario() con memoria para un nodo usuario y usuario_t*/
+	{
+		if((conductor->sig=(usuario_s*)malloc(sizeof(usuario_s)))==NULL)
+		{
+			return ST_ERROR_NOMEM;
+		}
+		conductor=conductor->sig;
+		
+		if((conductor->dato=(T_usuario*)malloc(sizeof(T_usuario)))==NULL)
+		{
+			return ST_ERROR_NOMEM;
+		}
+		if((st=cargar_usuario(pf, conductor->dato))!=ST_EXIT_OK)
+		{
+			return st;
+		}
+		conductor->sig=NULL;/*Apuntamos el ultimo elemeto de la lista a NULL por si la lista termino*/
 	}
 	return ST_EXIT_OK;
 }
@@ -169,68 +191,26 @@ status_t cargar_usuario(FILE *pf, T_usuario *pusuario)
 	{
 		return ST_ERROR_EXTRAER_DATOS;/*caso usuario*/
 	}
-	if(strncmp(fila,IDENTIFICADOR_ID,strlen(fila))==1)
+	if(strncmp(fila,IDENTIFICADOR_ID,strlen(fila))==1)/*Cargar ID*/
 	{
 		pusuario->id=atoi(aux);
 	}
-	if(strncmp(fila,IDENTIFICADOR_NOMBRE,strlen(fila))==1)
+	if(strncmp(fila,IDENTIFICADOR_NOMBRE,strlen(fila))==1)/*Cargar nombre*/
 	{
 		pusuario->nombre=aux;
 	}
-	if(strncmp(fila,IDENTIFICADOR_AMIGOS,strlen(fila))==1)
+	if(strncmp(fila,IDENTIFICADOR_AMIGOS,strlen(fila))==1)/*Cargar amigos*/
 	{
 		if((st=cargar_amigos(pusuario->amigos,aux))!=ST_EXIT_OK)
 		{
 			return st;
 		}
 	}
-	if(strncmp(fila,IDENTIFICADOR_MENSAJE,strlen(fila))==1)
+	if(strncmp(fila,IDENTIFICADOR_MENSAJE,strlen(fila))==1)/*Cargar mensaje*/
 	{
 		/*pusuario->mensaje=aux;*/
 	}
 	return ST_EXIT_OK;
-}
-
-status_t cargar_usuarios(FILE *pf, usuario_s *conductor)
-{
-	status_t st;
-
-	while(!feof(pf))
-	{
-		if((conductor->sig=(usuario_s*)malloc(sizeof(usuario_s)))==NULL)
-		{
-			return ST_ERROR_NOMEM;
-		}
-		conductor=conductor->sig;
-		
-		if((conductor->dato=(T_usuario*)malloc(sizeof(T_usuario)))==NULL)
-		{
-			return ST_ERROR_NOMEM;
-		}
-		if((st=cargar_usuario(pf, conductor->dato))!=ST_EXIT_OK)
-		{
-			return st;
-		}
-		conductor->sig=NULL;
-	}
-	return ST_EXIT_OK;
-}
-
-status_t Getline(char *s, FILE *pf)
-{
-    int c, i;
-	
-	if(!pf)
-	{
-		return ST_ERROR_PUNTERO_NULO;
-	}
-    for (i=0;(c=fgetc(pf))!=EOF && c!='\n'; i++)
-	{
-		s[i]=c;
-	}
-    s[i]='\0';
-	
-    return ST_EXIT_OK;
 }
 
 status_t cargar_amigos(vector_s vector,char* linea)
@@ -261,4 +241,21 @@ status_t cargar_amigos(vector_s vector,char* linea)
 		linea=NULL;
 	}
 	return ST_EXIT_OK;
+}
+
+status_t Getline(char *s, FILE *pf)
+{
+    int c, i;
+	
+	if(!pf)
+	{
+		return ST_ERROR_PUNTERO_NULO;
+	}
+    for (i=0;(c=fgetc(pf))!=EOF && c!='\n'; i++)
+	{
+		s[i]=c;
+	}
+    s[i]='\0';
+	
+    return ST_EXIT_OK;
 }
