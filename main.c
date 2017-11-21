@@ -265,6 +265,8 @@ status_t cargar_amigos(vector_s *vector,char* linea)
             return ST_ERROR_ESCRIBIR_ARCHIVO;
         }
 	}
+    vector->alloc=alloc_size;
+    vector->real=used_size;
 	return ST_EXIT_OK;
 }
 
@@ -315,5 +317,22 @@ status_t cargar_usuario(char *usuario,char *linea)
 
 status_t cargar_mensajes(lista_s *lista, char *fila)
 {
+    lista_s *conductor=lista;
+    
+    conductor->dato=NULL;
+    while(conductor->sig!=NULL)/*Recorre la lista hasta el ultimo elemento*/
+    {
+        conductor=conductor->sig;
+    }
+    if((conductor->sig=(lista_s*)malloc(sizeof(lista_s)))==NULL)/*Damos espacio para un siguiente nodo de mensaje*/
+    {
+        return ST_ERROR_NOMEM;
+    }
+    conductor=conductor->sig;/*Pasamos al siguiente nodo*/
+    if((conductor->dato=(char*)malloc(sizeof(char)*strlen(fila))))/*Damos espacio para los caracteres y apuntamos a dato ahi*/
+    {
+        return ST_ERROR_NOMEM;
+    }
+    strcpy(conductor->dato,fila);/*Copiamos el dato ahi VALIDAR*/
     return ST_EXIT_OK;
 }
