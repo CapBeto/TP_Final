@@ -1,0 +1,11 @@
+[mariano]
+id = 23
+nombre = Mariano Moreno
+amigos = 2,15,101,36
+mensaje = 1965,1809-04-15,23,Quiero más una libertad peligrosa que una
+mensaje = 2069,1811-09-15,2,Hacía falta tanta agua para apagar tanto fuego
+[cornelio]
+id = 2
+nombre = Cornelio Saavedra
+amigos = 263,15,23
+mensaje = 2069,1811-09-15,2,Hacía falta tanta agua para apagar tanto fuego
